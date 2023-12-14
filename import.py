@@ -6,7 +6,7 @@ import gc
 import random
 import sys  # Import sys to read from stdin
 
-uri = "bolt://db:7687"
+uri = "bolt://localhost:7687"
 username = "neo4j"
 password = "testtest"
 
@@ -15,7 +15,7 @@ def add_articles(batch):
     with driver.session() as session:
         for _ in range(3):
             try:
-                session.write_transaction(add_articles_tx, batch)
+                session.execute_write(add_articles_tx, batch)
                 break
             except Exception as e:
                 print(f"Transaction failed: {e}")
@@ -24,16 +24,7 @@ def add_articles(batch):
     del batch
 
 def add_articles_tx(tx, articles):
-    query = """
-    UNWIND $jsonBatch AS jsonObj
-    CREATE (article:ARTICLE {_id: jsonObj._id, title: jsonObj.title})
-    WITH article, jsonObj.authors AS authors
-    UNWIND authors AS author
-    CREATE (a:AUTHOR {_id: author._id, name: author.name})
-    CREATE (a)-[:AUTHORED]->(article)
-    RETURN article, a
-    """
-    '''
+
     query = """
     UNWIND $jsonBatch AS jsonObj
     MERGE (article:ARTICLE {_id: jsonObj._id})
@@ -55,7 +46,6 @@ def add_articles_tx(tx, articles):
     MERGE (article)-[:CITES]->(cited_article)
     RETURN article
     """
-    '''
     tx.run(query, jsonBatch=articles)
 
 def process_batch(batch):
