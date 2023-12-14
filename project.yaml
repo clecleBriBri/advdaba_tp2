@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: advdaba
+  namespace: adv-da-ba23-bicre
+spec:
+  containers:
+  - name: advdaba
+    image: clemsouu/dl_clean_dblpv:tagname
+  - name: db
+    image: neo4j
+    env:
+    - name: NEO4J_AUTH
+      value: neo4j/testtest
+    resources:
+      limits:
+        memory: "3Gi"
+    ports:
+    - containerPort: 7474
+    - containerPort: 7687
