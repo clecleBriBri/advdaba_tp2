@@ -6,7 +6,7 @@ import gc
 import random
 import sys  # Import sys to read from stdin
 
-uri = "bolt://bd:7687"
+uri = "bolt://db:7687"
 username = "neo4j"
 password = "testtest"
 
