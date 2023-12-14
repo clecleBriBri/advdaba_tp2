@@ -4,27 +4,26 @@ import time
 import multiprocessing
 import gc
 import random
-import sys  # Import sys to read from stdin
-
+import sys
 uri = "bolt://localhost:7687"
 username = "neo4j"
 password = "testtest"
+
 
 def add_articles(batch):
     driver = GraphDatabase.driver(uri, auth=(username, password))
     with driver.session() as session:
         for _ in range(3):
             try:
-                session.execute_write(add_articles_tx, batch)
+                session.write_transaction(add_articles_tx, batch)
                 break
             except Exception as e:
                 print(f"Transaction failed: {e}")
                 time.sleep(random.uniform(0.5, 2))
     driver.close()
-    del batch
+
 
 def add_articles_tx(tx, articles):
-
     query = """
     UNWIND $jsonBatch AS jsonObj
     MERGE (article:ARTICLE {_id: jsonObj._id})
@@ -44,39 +43,37 @@ def add_articles_tx(tx, articles):
     MERGE (cited_article:ARTICLE {_id: ref})
     ON CREATE SET cited_article.title = ''
     MERGE (article)-[:CITES]->(cited_article)
-    RETURN article
     """
     tx.run(query, jsonBatch=articles)
+
 
 def process_batch(batch):
     add_articles(batch)
 
+
 def process_stdin():
-    batch_size = 10000
+    batch_size = 1000
     number_of_articles = 0
     start_time = time.time()
     parser = ijson.items(sys.stdin, "item")
-    with multiprocessing.Pool(processes=4) as pool:
-        batch = []
-        for article in parser:
-            batch.append(article)
-            if len(batch) >= batch_size:
-                pool.apply_async(process_batch, (batch.copy(),))
-                number_of_articles += len(batch)
-                print(f"Processing batch of {len(batch)} articles")
-                print(f"Total articles processed: {number_of_articles}")
-                print(f"Elapsed Time: {time.time() - start_time} seconds")
-                batch = []
-                gc.collect()
 
-        if batch:
-            pool.apply_async(process_batch, (batch.copy(),))
+    batch = []
+    for article in parser:
+        batch.append(article)
+        if len(batch) >= batch_size:
+            process_batch(batch)
             number_of_articles += len(batch)
+            print(f"Processing batch of {len(batch)} articles")
+            print(f"Total articles processed: {number_of_articles}")
+            print(f"Elapsed Time: {time.time() - start_time} seconds")
+            batch = []
 
-        pool.close()
-        pool.join()
+    if batch:
+        process_batch(batch)
+        number_of_articles += len(batch)
 
     print(f"Total articles processed: {number_of_articles}")
+
 
 if __name__ == "__main__":
     process_stdin()
